@@ -13,20 +13,22 @@ namespace Company.Function
             containerName: "containerName",
             Connection = "CosmosDBConnectionSetting",
             LeaseContainerName = "leases",
+            // Here you can bind to any class you want!
             CreateLeaseContainerIfNotExists = true)]IReadOnlyList<ToDoItem> input,
             ILogger log)
         {
             if (input != null && input.Count > 0)
             {
                 log.LogInformation("Documents modified " + input.Count);
-                log.LogInformation("First document Id " + input[0].Id);
+                log.LogInformation("First document Id " + input[0].id);
             }
         }
     }
 
+    // Note that you can customize this to any class that you want!
     public class ToDoItem
     {
-        public string Id { get; set; }
+        public string id { get; set; }
         public string Description { get; set; }
     }
 }
