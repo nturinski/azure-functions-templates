@@ -9,12 +9,11 @@ namespace Company.Function
     {
         [FunctionName("CosmosDBTriggerCSharp")]
         public static void Run([CosmosDBTrigger(
-            databaseName: "databaseName",
-            containerName: "containerName",
-            Connection = "CosmosDBConnectionSetting",
+            databaseName: "DatabaseValue",
+            containerName: "CollectionValue",
+            Connection = "ConnectionValue",
             LeaseContainerName = "leases",
-            // Here you can bind to any class you want!
-            CreateLeaseContainerIfNotExists = true)]IReadOnlyList<ToDoItem> input,
+            CreateLeaseContainerIfNotExists = true)]IReadOnlyList<ToDoItem> input, // Here you can bind to any class you want!
             ILogger log)
         {
             if (input != null && input.Count > 0)
