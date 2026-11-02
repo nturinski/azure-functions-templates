@@ -34,7 +34,7 @@ entries accurate and validated:
 | File | Purpose |
 |---|---|
 | `Functions.Templates/Template-Manifest/manifest.json` | Source of truth. Add the template object + bump metadata. |
-| `Functions.Templates/Template-Manifest/schemas/manifest.schema.json` | JSON Schema. Only edit to add a **new enum value** (e.g. a new `resource`). Note: `categories` are **not** a schema enum — they are free-form kebab-case (pattern-validated), so adding a category needs **no** schema change. |
+| `Functions.Templates/Template-Manifest/schemas/manifest.schema.json` | JSON Schema. Edit for new metadata contracts or **new enum values** (e.g. a new `resource`); preserve compatibility for existing templates. Note: `categories` are **not** a schema enum — they are free-form kebab-case (pattern-validated), so adding a category needs **no** schema change. |
 | `Functions.Templates/Template-Manifest/docs/priority-tiers.md` | Human-readable priority/coverage doc. Keep in sync with the manifest. |
 
 The manifest file is written as canonical `json.dumps(indent=2, ensure_ascii=False)`
@@ -128,6 +128,13 @@ optional but recommended where applicable. **`tags` is deprecated — do not add
   tag using Step 1 before adding the template. **When the source repo ships a new
   release, ask the user to update `gitRef`** and re-verify the pinned
   `folderPath`/contents.
+
+Ownership-bearing connector entries instead pin the exact audited **40-hex commit
+SHA**. Keep the optional `connectorTrigger.operations` inventory and that pin in
+the same update, using authoritative canonical live operation IDs, exact function
+registrations and exclusive owned files/directories. See
+`docs/priority-tiers.md#connector-operation-ownership`; never guess paths or include
+shared project artifacts. Existing templates do not require this metadata.
 
 The allowed values, patterns, and limits for every field are defined in
 `schemas/manifest.schema.json` — read them there rather than relying on a copy.
@@ -241,8 +248,8 @@ category.
 In `manifest.json`, update the top-level fields:
 
 - **`totalTemplates`** — must equal the number of objects in `templates`.
-- **`version`** — bump **minor** (e.g. `1.2.0` → `1.3.0`) for new templates or
-  enum values (`resource`, `language`, `bindingType`, `iac`). Bump **patch**
+- **`version`** — bump **minor** (e.g. `1.2.0` → `1.3.0`) for new templates,
+  optional metadata contracts or enum values (`resource`, `language`, `bindingType`, `iac`). Bump **patch**
   (e.g. `1.2.0` → `1.2.1`) for description/metadata fixes, including `gitRef`
   updates, without adding/removing templates or extending enums. If both apply,
   use the higher bump (minor).
@@ -282,9 +289,19 @@ print("OK:", len(d["templates"]), "templates, version", d["version"])
 
 ### Validate template references on GitHub
 
+Also run the offline semantic validator and its regression suite; schema-only
+validation cannot reject duplicate operation IDs/names, overlapping paths or
+shared connector project artifacts:
+
+```powershell
+pwsh -NoProfile -File eng\scripts\validate-manifest.ps1
+pwsh -NoProfile -File eng\scripts\test-manifest.ps1
+```
+
 Run the repo's reference validator, which checks that every template's
 `repositoryUrl`, `gitRef`, and `folderPath` resolve and tag signatures verify on
-GitHub. It rejects lightweight/unsigned tags and warns for legacy branch refs.
+GitHub. It accepts exact 40-hex commit pins, rejects lightweight/unsigned tags,
+and warns for legacy branch refs.
 Requires an authenticated `gh` CLI:
 
 ```powershell
@@ -298,8 +315,9 @@ until your entries are clean before committing.
 
 ## Checklist
 
-- [ ] Verified repo, `folderPath`, and `gitRef` (tag) exist; claims match real code.
-- [ ] `gitRef` pins a verified signed tag; newly created tags use `git tag -s`.
+- [ ] Verified repo, `folderPath`, and `gitRef` exist; claims match real code.
+- [ ] `gitRef` pins a verified signed tag (new tags use `git tag -s`) or, for
+      ownership-bearing connector entries, the exact audited 40-hex commit SHA.
 - [ ] Template object added with all mandatory fields (incl. `gitRef`); `id` unique.
 - [ ] `displayName` follows `"<Friendly Name> (<Lang> + AZD + Bicep)"`.
 - [ ] `categories` use only existing values; **no `tags`** on new entries.

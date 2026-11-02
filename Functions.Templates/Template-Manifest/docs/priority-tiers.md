@@ -1,7 +1,7 @@
 # Template Manifest — Priority Tiers (P00–P99)
 
 **Total templates:** 76
-**Manifest version:** 1.10.3
+**Manifest version:** 1.11.0
 
 ## Design principles
 
@@ -13,6 +13,55 @@
 5. **IaC sort order (tertiary):** 🚧 no AZD → ✅ AZD → 📦 IaC-only.
    no AZD = what VS Code Azure Functions extension generates = the familiar baseline.
 6. **Default rule:** New templates without AZD/IaC default to P95–P99.
+
+## Connector operation ownership
+
+Connector trigger projects may declare an optional `connectorTrigger` object with
+a required, nonempty `operations` array. Each operation has exactly three fields:
+`operationId` (the exact canonical live Connector API ID), `functionName` (the
+exact Azure Functions registration), and a nonempty `ownedPaths` array. IDs are
+case-sensitive and must not be inferred from display names or version-stripped
+aliases. Function registrations must not collide, including case-only variants.
+Templates without this metadata remain valid.
+
+The inventory must describe every connector function in the pinned project root.
+Use safe project-root-relative POSIX paths to whole files or directories, including
+operation-specific deployment/config artifacts. No absolute paths, backslashes,
+traversal, dot/empty segments, glob characters, duplicate paths or ancestor/
+descendant overlaps are allowed. Path comparisons are case-insensitive to protect
+Windows checkouts. Never assign shared files or directories containing shared
+files to an operation: this includes `host.json`, `azure.yaml`, language project
+files, shared registration/bootstrap files, and shared infrastructure entrypoints.
+The validator rejects common shared artifacts; the pinned source inventory must
+also be reviewed for any other shared files.
+
+**Selection invariant:** delete only the nonselected operations' `ownedPaths`;
+preserve the selected operation and every shared file. The result must register
+exactly the selected function and retain only its Poll-ready deployment/config
+artifacts, so deploying it cannot recreate sibling triggers. Consumers must
+validate the inventory against the live operation and resolve paths safely within
+the cloned project before deleting anything. Never prune by guessed filenames.
+
+**Rollout:** publish the audited sample commits first. Release consumers that can
+check out immutable commit SHAs and apply the ownership contract before publishing
+the new CDN/bundled manifest or enabling operation selection. Keep unsupported
+consumers on the previous manifest. Update each entry's complete
+`repositoryUrl`/`folderPath`/`gitRef` source tuple and ownership inventory together.
+Ownership-bearing connector entries use the exact 40-hex commit SHA, not a moving
+branch. Runtime types, generated CDN manifests, and bundled/fallback manifests
+must preserve `connectorTrigger` unchanged.
+
+**Rollback:** restore the complete previous source tuple and omit its ownership
+metadata in the same update. In particular, reverting only a commit pin is not
+sufficient if the project root changed. This schema change itself never deletes
+project files.
+
+Run `pwsh -NoProfile -File eng\scripts\validate-manifest.ps1` for schema and
+semantic validation, and `pwsh -NoProfile -File eng\scripts\test-manifest.ps1`
+for regression tests. JSON Schema alone cannot check ID/name uniqueness, shared
+artifacts or path overlaps; CI runs both schema validation and these regressions.
+`eng\scripts\validate-manifest-refs.ps1` additionally verifies repository, exact
+commit/ref and project-root availability on GitHub.
 
 ## Priority block map
 

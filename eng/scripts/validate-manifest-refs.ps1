@@ -5,10 +5,10 @@
 .DESCRIPTION
     For each unique (repositoryUrl, gitRef, folderPath) tuple in the manifest:
     1. Verifies the repository is accessible.
-    2. Verifies the gitRef is fully qualified (refs/tags/* or refs/heads/*), resolves on GitHub,
-       and points to a signed tag with a verified signature when it is a tag.
+    2. Verifies the gitRef is fully qualified (refs/tags/* or refs/heads/*) or an immutable
+       40-hex commit SHA, resolves on GitHub, and has a verified signature when it is a tag.
     3. Verifies the folderPath exists at that ref (skipped for '.').
-    Warns when gitRef is a branch (refs/heads/*) instead of a signed tag.
+    Warns when gitRef is a branch (refs/heads/*) instead of a signed tag or immutable commit.
 
     Requires: gh CLI authenticated with repo read access.
 
@@ -19,6 +19,8 @@
     .\validate-manifest-refs.ps1
     .\validate-manifest-refs.ps1 -ManifestPath ./manifest.json
 #>
+
+#Requires -Version 7.0
 
 param(
     [string]$ManifestPath
@@ -34,6 +36,8 @@ if (-not (Test-Path $ManifestPath)) {
     Write-Host "ERROR: Manifest not found at $ManifestPath" -ForegroundColor Red
     exit 1
 }
+
+& (Join-Path $PSScriptRoot 'validate-manifest.ps1') -ManifestPath $ManifestPath
 
 # Verify gh is available
 $null = Get-Command gh -ErrorAction Stop
@@ -64,15 +68,17 @@ foreach ($t in $manifest.templates) {
         continue
     }
 
-    # Check gitRef exists — must be fully qualified (refs/tags/* or refs/heads/*)
+    # Commit pins bind ownership metadata to an immutable project inventory.
     $gitRef = $t.gitRef
-    if ($gitRef -notmatch '^refs/(tags|heads)/') {
-        $errors += "$($t.id): gitRef '$gitRef' is not fully qualified — must start with refs/tags/ or refs/heads/"
+    $isCommit = $gitRef -match '^[0-9a-fA-F]{40}\z'
+    if (-not $isCommit -and $gitRef -notmatch '^refs/(tags|heads)/') {
+        $errors += "$($t.id): gitRef '$gitRef' must start with refs/tags/ or refs/heads/, or be a 40-hex commit SHA"
         Write-Host "  FAIL  $label (gitRef not fully qualified)" -ForegroundColor Red
         continue
     }
 
-    $refResponse = gh api "repos/$repoPath/git/$gitRef" 2>&1
+    $refEndpoint = if ($isCommit) { "repos/$repoPath/git/commits/$gitRef" } else { "repos/$repoPath/git/$gitRef" }
+    $refResponse = gh api $refEndpoint 2>&1
     if ($LASTEXITCODE -ne 0) {
         $errors += "$($t.id): gitRef '$gitRef' not found in $repoPath"
         Write-Host "  FAIL  $label (ref not found)" -ForegroundColor Red
@@ -80,7 +86,13 @@ foreach ($t in $manifest.templates) {
     }
 
     $ref = ($refResponse -join "`n") | ConvertFrom-Json
-    if ($gitRef -match '^refs/tags/') {
+    if ($isCommit) {
+        if ($ref.sha -ine $gitRef) {
+            $errors += "$($t.id): commit '$gitRef' did not resolve to the exact pinned SHA in $repoPath"
+            Write-Host "  FAIL  $label (commit pin mismatch)" -ForegroundColor Red
+            continue
+        }
+    } elseif ($gitRef -match '^refs/tags/') {
         if ($ref.object.type -ne 'tag') {
             $errors += "$($t.id): gitRef '$gitRef' must point to a signed tag (object type: '$($ref.object.type)') — $repoPath"
             Write-Host "  FAIL  $label (not a signed tag)" -ForegroundColor Red

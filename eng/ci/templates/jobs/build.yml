@@ -23,6 +23,13 @@ jobs:
           schema: '$(Build.Repository.LocalPath)\Functions.Templates\Template-Manifest\schemas\manifest.schema.json'
           files:
             - '$(Build.Repository.LocalPath)\Functions.Templates\Template-Manifest\manifest.json'
+
+  - task: PowerShell@2
+    displayName: 'Validate manifest ownership and regression tests'
+    inputs:
+      targetType: 'filePath'
+      filePath: '.\eng\scripts\test-manifest.ps1'
+      pwsh: true
     
   - task: PowerShell@2
     displayName: 'Build templates'
