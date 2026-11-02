@@ -1,7 +1,7 @@
 # Template Manifest — Priority Tiers (P00–P99)
 
 **Total templates:** 76
-**Manifest version:** 1.11.1
+**Manifest version:** 1.11.2
 
 ## Design principles
 

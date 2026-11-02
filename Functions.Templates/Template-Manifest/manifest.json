@@ -1,7 +1,7 @@
 {
   "$schema": "./schemas/manifest.schema.json",
-  "generatedAt": "2026-11-02T22:34:44Z",
-  "version": "1.11.1",
+  "generatedAt": "2026-11-02T22:37:32Z",
+  "version": "1.11.2",
   "totalTemplates": 76,
   "runtimeVersions": {
     "Python": {
@@ -2566,7 +2566,7 @@
       "author": "Azure Functions Team",
       "repositoryUrl": "https://github.com/Azure-Samples/functions-connectors-python",
       "folderPath": "office365App",
-      "gitRef": "a8aa12a6141a421f84b0cfd297b55e7aa65ceff9",
+      "gitRef": "a9bfc5cc752e61926b1fea1599024801d0b7a755",
       "connectorTrigger": {
         "operations": [
           {
@@ -2737,7 +2737,7 @@
       "author": "Azure Functions Team",
       "repositoryUrl": "https://github.com/Azure-Samples/functions-connectors-python",
       "folderPath": "sharepointApp",
-      "gitRef": "a8aa12a6141a421f84b0cfd297b55e7aa65ceff9",
+      "gitRef": "a9bfc5cc752e61926b1fea1599024801d0b7a755",
       "connectorTrigger": {
         "operations": [
           {
